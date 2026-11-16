@@ -13,10 +13,8 @@ database in London. What has **never been run** is the app itself on a device: s
 creating a jar and joining one are untested end to end. The user will build in Android
 Studio but does not have access to it yet.
 
-**Check first:** the jar rules may not be deployed. The deploy was being retried when this
-was written. Run `npx -y firebase-tools@latest deploy --only firestore:rules --project
-swear-jar-ec309` (it is safe to repeat); until it succeeds, the live project only allows
-`users/{uid}` and creating a jar will fail with permission denied.
+The rules in `firestore.rules` are deployed to the live project. Redeploy after any change:
+`npx -y firebase-tools@latest deploy --only firestore:rules --project swear-jar-ec309`.
 
 ## Blocked on the user
 
