@@ -1,0 +1,13 @@
+.gradle/
+build/
+local.properties
+*.iml
+.idea/
+.kotlin/
+captures/
+*.apk
+*.aab
+*.jks
+*.keystore
+# Firebase config is per-developer; see README
+app/google-services.json

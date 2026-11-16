@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Swearjar</string>
+    <string name="jar_progress">%1$s of %2$s</string>
+    <string name="jar_no_goal">%1$s in the jar</string>
+    <string name="jar_goal_reached">Goal reached!</string>
+    <string name="jar_closed">This jar is closed.</string>
+    <string name="jar_round">Round %1$d</string>
+    <string name="demo_banner">Demo jar on this phone only. Shared jars arrive with sign-in.</string>
+    <string name="log_offence">Log an offence</string>
+    <string name="topic_button">%1$s %2$s · %3$s</string>
+    <string name="jar_content_description">Jar, %1$d percent full</string>
+</resources>
