@@ -56,6 +56,9 @@ class AuthRepository @Inject constructor(
         awaitClose { auth.removeAuthStateListener(listener) }
     }.distinctUntilChanged()
 
+    /** The signed-in user right now, or null. */
+    fun currentUser(): UserProfile? = auth.currentUser?.toProfile()
+
     /**
      * Shows the Google account sheet and signs in to Firebase with the chosen account.
      *

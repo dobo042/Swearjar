@@ -38,11 +38,13 @@ cd firestore-tests && npm install && npm test
 
 ## Status
 
-Built: project scaffold, rules engine with tests, the jar that fills towards its goal, a jar screen running on
-an in-memory demo jar, Google sign-in, and Firestore rules for user profiles. The app builds;
-sign-in has not yet been tried on a device. See `HANDOVER.md`.
+Built: sign-in with Google, starting a jar with its settings, joining one by invite code or
+QR, the jar list and the jar screen, with Firestore security rules and tests behind them.
+The app builds; it has not yet been run on a device. See `HANDOVER.md`.
 
 ![The jar empty, half full, full and overflowing](docs/jar-states.png)
 
-Next: creating and joining jars, then topics, logging and the ledger on Firestore, then
-disputes, settlements and rounds.
+![Create jar, jar home, empty list, jar list and join screens](docs/screens.png)
+
+Next: topics, logging offences and the ledger, then jar settings, disputes, settlements and
+rounds.

@@ -10,17 +10,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.swearjar.ui.createjar.CreateJarScreen
 import com.swearjar.ui.jarhome.JarHomeScreen
+import com.swearjar.ui.jarlist.JarListScreen
+import com.swearjar.ui.joinjar.JoinJarScreen
 import com.swearjar.ui.session.SessionState
 import com.swearjar.ui.session.SessionViewModel
 import com.swearjar.ui.signin.SignInScreen
 
-/** Route names. Jar list, ledger and settings are added as those screens are built. */
+/** Route names. Ledger and jar settings are added as those screens are built. */
 object Routes {
-    const val JAR_HOME = "jarHome"
+    const val JARS = "jars"
+    const val CREATE_JAR = "jars/create"
+    const val JOIN_JAR = "jars/join"
+    const val ARG_JAR_ID = "jarId"
+    const val JAR = "jar/{$ARG_JAR_ID}"
+
+    fun jar(jarId: String) = "jar/$jarId"
 }
 
 /** The whole app: sign-in when signed out, otherwise the signed-in navigation graph. */
@@ -34,11 +44,31 @@ fun SwearjarNavHost(session: SessionViewModel = hiltViewModel()) {
         SessionState.SignedOut -> SignInScreen()
         is SessionState.SignedIn -> {
             val navController = rememberNavController()
-            NavHost(navController = navController, startDestination = Routes.JAR_HOME) {
-                composable(Routes.JAR_HOME) {
-                    JarHomeScreen(userName = current.user.displayName, onSignOut = session::signOut)
+            NavHost(navController = navController, startDestination = Routes.JARS) {
+                composable(Routes.JARS) {
+                    JarListScreen(
+                        userName = current.user.displayName,
+                        onSignOut = session::signOut,
+                        onCreate = { navController.navigate(Routes.CREATE_JAR) },
+                        onJoin = { navController.navigate(Routes.JOIN_JAR) },
+                        onOpen = { navController.navigate(Routes.jar(it)) },
+                    )
+                }
+                composable(Routes.CREATE_JAR) {
+                    CreateJarScreen(onBack = navController::popBackStack, onCreated = navController::openNewJar)
+                }
+                composable(Routes.JOIN_JAR) {
+                    JoinJarScreen(onBack = navController::popBackStack, onJoined = navController::openNewJar)
+                }
+                composable(Routes.JAR) {
+                    JarHomeScreen(onBack = navController::popBackStack)
                 }
             }
         }
     }
+}
+
+/** Opens a jar just created or joined, leaving the jar list (not the form) behind it. */
+private fun NavHostController.openNewJar(jarId: String) {
+    navigate(Routes.jar(jarId)) { popUpTo(Routes.JARS) }
 }

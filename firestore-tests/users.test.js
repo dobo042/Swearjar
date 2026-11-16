@@ -85,8 +85,8 @@ describe('users/{uid}', () => {
 
 describe('everything else', () => {
   it('is denied until the app writes it', async () => {
-    await assertFails(getDoc(doc(db('alice'), 'jars/j1')));
-    await assertFails(setDoc(doc(db('alice'), 'jars/j1'), { name: 'Jar', ownerId: 'alice' }));
-    await assertFails(setDoc(doc(db('alice'), 'inviteCodes/ABC234'), { jarId: 'j1' }));
+    await assertFails(getDoc(doc(db('alice'), 'jars/j1/topics/t1')));
+    await assertFails(setDoc(doc(db('alice'), 'jars/j1/entries/e1'), { amountMinor: 50 }));
+    await assertFails(setDoc(doc(db('alice'), 'somethingElse/x'), { a: 1 }));
   });
 });

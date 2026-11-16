@@ -5,11 +5,18 @@ Last updated: 2026-11-16. Branch: `claude/bold-noether-1w57l9`. No pull request 
 ## State in one paragraph
 
 The system plan is agreed and the foundations are in. The app **builds** into a debug APK.
-The rules engine is verified (25 unit tests), the Firestore security rules are verified in
-the emulator (9 tests) and deployed, and the jar drawing has been rendered and looked at.
-The Firebase project `swear-jar-ec309` has an Android app registered, Google sign-in enabled
-and a Firestore database in London. What has **never been run** is the app itself on a
-device: sign-in, the profile write and the jar screen are untested end to end.
+The rules engine is verified (28 unit tests), the Firestore security rules are verified in
+the emulator (32 tests), and every screen has been rendered from its Compose preview and
+looked at (`docs/screens.png`, `docs/jar-states.png`). The Firebase project
+`swear-jar-ec309` has an Android app registered, Google sign-in enabled and a Firestore
+database in London. What has **never been run** is the app itself on a device: sign-in,
+creating a jar and joining one are untested end to end. The user will build in Android
+Studio but does not have access to it yet.
+
+**Check first:** the jar rules may not be deployed. The deploy was being retried when this
+was written. Run `npx -y firebase-tools@latest deploy --only firestore:rules --project
+swear-jar-ec309` (it is safe to repeat); until it succeeds, the live project only allows
+`users/{uid}` and creating a jar will fail with permission denied.
 
 ## Blocked on the user
 
@@ -22,9 +29,6 @@ device: sign-in, the profile write and the jar screen are untested end to end.
    ```
 
    Re-fetch `app/google-services.json` afterwards (command below).
-2. **How the user will run the app** (Android Studio on their machine, or an APK built in a
-   cloud session) is not yet known. A cloud-built APK is signed with that container's
-   throwaway debug key, so it would need a fixed signing key to be useful.
 
 ## Firebase project state
 
@@ -51,45 +55,55 @@ and complete with `npx -y firebase-tools@latest login <code>`.
 | Piece | Where | Verified |
 |---|---|---|
 | Gradle scaffold, version catalog, wrapper | root, `gradle/` | Builds |
-| Models and rules engine | `domain/` | 25 tests pass |
-| Firestore rules for `users/{uid}`, everything else denied | `firestore.rules` | 9 emulator tests pass; deployed |
+| Models and rules engine, `JarDraft` validation | `domain/` | 28 tests pass |
+| Firestore rules for users, jars, members, rounds, invite codes | `firestore.rules` | 32 emulator tests pass |
+| Jar repository: list, observe, create, join | `app/.../data/jar` | Compiles; never run |
+| Screens: jar list, create jar, join jar (code or QR), jar home with invite QR and members | `app/.../ui` | Rendered and checked; never run |
 | App shell: theme, Hilt, activity, nav host, icon | `app/src/main` | Compiles |
 | Firebase SDK wiring, Hilt module | `app/build.gradle.kts`, `app/.../di` | Compiles |
 | Google sign-in, sign-out, profile write | `app/.../data/auth`, `ui/signin`, `ui/session` | Compiles; never run |
 | Jar drawing: flat fill to a dashed goal line, overflow up the neck | `app/.../ui/jar/JarCanvas.kt` | Rendered and checked (`docs/jar-states.png`) |
 | Jar animations: rising fill, confetti | same | Compiles; never seen |
-| Jar screen on an in-memory demo jar | `app/.../ui/jarhome` | Compiles; never run |
 
 ## Next steps, in order
 
-1. Register a SHA-1, install the app on a device, sign in, confirm `users/{uid}` appears in
-   Firestore. Fix what that turns up.
-2. **Jars**: "my jars", the create-jar wizard (name, currency, goal, the three settings),
-   join by code or QR (`play-services-code-scanner`, ZXing core). Rules and rules tests for
-   `jars`, `members`, `inviteCodes`.
-3. **Topics, logging, ledger**: repositories in `app/.../data`, the log-entry transaction,
-   rules and tests, the ledger screen. Replace the demo state in `JarHomeViewModel`.
+1. Register a SHA-1, install the app on a device, sign in, create a jar, join it from a
+   second account. Fix what that turns up.
+2. **Topics, logging, ledger**: topics for admins to manage, the log-entry transaction
+   (uses `LoggingRules`, `PricingRules`, `GoalRules`), rules and tests, the ledger screen.
+   The jar home screen currently says topics are "coming next"; replace that line.
+3. **Jar settings**: editing name, goal and the three settings after creation; promoting
+   to admin; leaving a jar. No rule allows any of these yet.
 4. **Disputes, settlements, rounds.**
 5. Later: push notifications (Cloud Functions, Blaze plan), stats, reminders.
 
 ## Firestore data model
 
-Implemented: `users/{uid}` — `displayName`, `photoUrl` (optional, https), `createdAt`,
-`updatedAt`. Owner-only. No email is stored anywhere.
+Implemented (the header comment in `firestore.rules` is the authoritative field list):
+
+```
+users/{uid}                 displayName, photoUrl?, createdAt, updatedAt   (owner-only, no email)
+inviteCodes/{code}          jarId                                          (get by code only, no listing)
+jars/{jarId}                name, ownerId, currency, inviteCode, memberIds[],
+                            settings { loggingPolicy, pricingMode, goalBehaviour, escalation{…} },
+                            currentRoundId, goalMinor, roundTotalMinor, status, createdAt
+  members/{uid}             role, displayName, photoUrl?, owedMinor, paidMinor, joinCode, joinedAt
+  rounds/{roundId}          goalMinor, totalMinor, startedAt
+```
+
+Enums are stored as their Kotlin names (`ANYONE`, `OWNER`, `ACTIVE`). Creating a jar is one
+batch of four documents; joining is one batch of two (append own uid to `memberIds`, create
+own member document carrying the invite code). `joinCode` on the member document is how the
+rules check the joiner actually had the code.
 
 Agreed, not yet implemented:
 
 ```
-inviteCodes/{code}          jarId
-jars/{jarId}                name, ownerId, currency, inviteCode, memberIds[],
-                            settings { loggingPolicy, pricingMode, escalation{…}, goalBehaviour },
-                            currentRoundId, goalMinor, roundTotalMinor, status
-  members/{uid}             role, displayName, photoUrl, owedMinor, paidMinor, joinedAt
-  topics/{topicId}          name, emoji, priceMinor, archived
-  rounds/{roundId}          goalMinor, totalMinor, startedAt, completedAt
-  entries/{entryId}         roundId, topicId, topicName, offenderId, loggedById,
-                            amountMinor, note, status(active|disputed|voided), createdAt
-  settlements/{id}          memberId, amountMinor, recordedById, createdAt
+jars/{jarId}/topics/{topicId}       name, emoji, priceMinor, archived
+jars/{jarId}/entries/{entryId}      roundId, topicId, topicName, offenderId, loggedById,
+                                    amountMinor, note, status(active|disputed|voided), createdAt
+jars/{jarId}/settlements/{id}       memberId, amountMinor, recordedById, createdAt
+rounds: completedAt
 ```
 
 Rules intent: only members read a jar; only owner/admins edit settings, topics and roles;
@@ -109,11 +123,14 @@ member can never set or raise their own role.
   sign-in consent screen.
 - **The jar is a flat fill, not coins**, at the user's request ("simply a line"). Do not
   reintroduce coins.
-- **Demo jar is temporary.** `JarHomeViewModel` holds an in-memory jar and the screen shows
-  a banner saying so. Remove both in step 3.
+- **The demo jar is gone.** Jar home shows a real jar, which stays at zero until logging
+  exists.
+- **A jar holds at most 50 members** (`Jar.MAX_MEMBERS`, enforced in the rules).
+- **Shell commands sometimes fail with "classifier gave no verdict".** It is transient;
+  retry, and use file edits in the meantime.
 - **Escalation needs a count.** `PricingRules.priceFor` takes `priorOffences`: the
-  offender's live entries on that topic inside `Escalation.windowDays`. The demo counts per
-  round; the real version needs a query before the transaction.
+  offender's live entries on that topic inside `Escalation.windowDays`. It needs a Firestore
+  query before the logging transaction.
 - **No Cloud Functions means client-trusted writes.** Totals and escalating prices are
   computed on the phone and guarded only by security rules.
 - **Rule decisions the user has not explicitly reviewed** (in `LoggingRules` /

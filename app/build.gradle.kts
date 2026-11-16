@@ -77,6 +77,10 @@ dependencies {
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
 
+    // Invite codes as QR: scanning (no camera permission needed) and drawing.
+    implementation(libs.play.services.code.scanner)
+    implementation(libs.zxing.core)
+
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

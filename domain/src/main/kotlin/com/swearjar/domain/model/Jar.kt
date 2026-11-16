@@ -25,7 +25,39 @@ data class Jar(
     /** Total logged in the current round. Drives the jar visual. */
     val roundTotalMinor: Minor,
     val status: JarStatus = JarStatus.ACTIVE,
-)
+    val memberIds: List<String> = emptyList(),
+) {
+    companion object {
+        const val MAX_MEMBERS = 50
+    }
+}
+
+/** What someone fills in to create a jar. */
+data class JarDraft(
+    val name: String,
+    val currency: String,
+    /** Zero means no goal. */
+    val goalMinor: Minor,
+    val settings: JarSettings,
+) {
+    enum class Problem { NAME_BLANK, NAME_TOO_LONG, CURRENCY_INVALID, GOAL_NEGATIVE, GOAL_TOO_LARGE }
+
+    val cleanName: String get() = name.trim()
+
+    /** Everything wrong with the draft. Empty means it can be saved; mirrors firestore.rules. */
+    fun problems(): Set<Problem> = buildSet {
+        if (cleanName.isEmpty()) add(Problem.NAME_BLANK)
+        if (cleanName.length > MAX_NAME_LENGTH) add(Problem.NAME_TOO_LONG)
+        if (!Regex("[A-Z]{3}").matches(currency)) add(Problem.CURRENCY_INVALID)
+        if (goalMinor < 0) add(Problem.GOAL_NEGATIVE)
+        if (goalMinor > MAX_GOAL_MINOR) add(Problem.GOAL_TOO_LARGE)
+    }
+
+    companion object {
+        const val MAX_NAME_LENGTH = 60
+        const val MAX_GOAL_MINOR: Minor = 100_000_000
+    }
+}
 
 data class Member(
     val userId: String,

@@ -14,8 +14,50 @@ rules_version = '2';
 // Holds no email or other private data. Readable and writable by its owner only;
 // other members see a copy of the name and avatar on the jar's member document.
 //
-// Jars, members, topics, rounds, entries and settlements are not yet written by
-// the app, so no rule allows them and they are denied by default.
+// Collection: jars
+// Document ID: auto-generated
+// Fields (all required):
+//   - name:            string (1-60 chars)
+//   - ownerId:         string (uid of the creator, immutable)
+//   - currency:        string (ISO 4217, three capital letters, immutable)
+//   - inviteCode:      string (6 chars from the invite alphabet, immutable)
+//   - memberIds:       list of uids (1-50); drives "my jars" queries and read access
+//   - settings:        map { loggingPolicy, pricingMode, goalBehaviour: enum strings,
+//                            escalation: map { every, multiplierPercent, windowDays, maxSteps: int } }
+//   - currentRoundId:  string (id of a document in the rounds subcollection)
+//   - goalMinor:       int (0 - 100,000,000; 0 means no goal), in minor currency units
+//   - roundTotalMinor: int (>= 0), total logged in the current round
+//   - status:          'ACTIVE' | 'CLOSED'
+//   - createdAt:       timestamp (server time at creation, immutable)
+// Readable by members only. A jar is created together with its invite code, its
+// first round and the owner's member document, in one batch. The only update the
+// app makes so far is a new member appending their own uid to memberIds.
+//
+// Collection: jars/{jarId}/members
+// Document ID: the member's uid
+// Fields:
+//   - role:        'OWNER' | 'ADMIN' | 'MEMBER' (required) - OWNER only for the jar's owner
+//   - displayName: string (required, 1-80 chars) - copy of the user's name
+//   - photoUrl:    string (optional, https URL, at most 2000 chars)
+//   - owedMinor:   int (required, >= 0) - everything logged against the member
+//   - paidMinor:   int (required, >= 0) - everything the member has settled
+//   - joinCode:    string (required) - the jar's invite code, proving the joiner had it
+//   - joinedAt:    timestamp (required, server time)
+// Readable by the jar's members. Created by the member themselves when they join.
+// Not yet updatable or deletable.
+//
+// Collection: jars/{jarId}/rounds
+// Document ID: auto-generated
+// Fields (all required): goalMinor: int, totalMinor: int, startedAt: timestamp
+// Readable by the jar's members. The first round is created with the jar.
+//
+// Collection: inviteCodes
+// Document ID: the invite code
+// Fields: jarId: string (required)
+// Any signed-in user may fetch a code they already know; codes cannot be listed.
+//
+// Topics, entries and settlements are not yet written by the app, so no rule
+// allows them and they are denied by default.
 //
 // ===============================================================
 
@@ -86,6 +128,164 @@ service cloud.firestore {
 
       // Profiles are not deleted from the app.
       allow delete: if false;
+    }
+
+    // ---------------------------------------------------------------
+    // Jars
+    // ---------------------------------------------------------------
+
+    function jarPath(jarId) {
+      return /databases/$(database)/documents/jars/$(jarId);
+    }
+
+    // Membership as it stands before this request.
+    function isMember(jarId) {
+      return isAuthenticated() && request.auth.uid in get(jarPath(jarId)).data.memberIds;
+    }
+
+    function isValidInviteCode(code) {
+      return code is string && code.matches('^[A-HJKMNP-Z2-9]{6}$');
+    }
+
+    function isValidEscalation(e) {
+      return e is map &&
+        e.keys().hasOnly(['every', 'multiplierPercent', 'windowDays', 'maxSteps']) &&
+        e.keys().hasAll(['every', 'multiplierPercent', 'windowDays', 'maxSteps']) &&
+        e.every is int && e.every >= 1 && e.every <= 100 &&
+        e.multiplierPercent is int && e.multiplierPercent >= 100 && e.multiplierPercent <= 1000 &&
+        e.windowDays is int && e.windowDays >= 1 && e.windowDays <= 365 &&
+        e.maxSteps is int && e.maxSteps >= 0 && e.maxSteps <= 10;
+    }
+
+    function isValidSettings(s) {
+      return s is map &&
+        s.keys().hasOnly(['loggingPolicy', 'pricingMode', 'goalBehaviour', 'escalation']) &&
+        s.keys().hasAll(['loggingPolicy', 'pricingMode', 'goalBehaviour', 'escalation']) &&
+        s.loggingPolicy in ['ANYONE', 'ANYONE_WITH_DISPUTE', 'SELF_ONLY', 'ADMINS_ONLY'] &&
+        s.pricingMode in ['FIXED', 'FIXED_WITH_OVERRIDE', 'ESCALATING'] &&
+        s.goalBehaviour in ['RESET', 'KEEP_FILLING', 'CLOSE'] &&
+        isValidEscalation(s.escalation);
+    }
+
+    function isValidJar(data) {
+      return data.keys().hasOnly(['name', 'ownerId', 'currency', 'inviteCode', 'memberIds', 'settings',
+          'currentRoundId', 'goalMinor', 'roundTotalMinor', 'status', 'createdAt']) &&
+        data.keys().hasAll(['name', 'ownerId', 'currency', 'inviteCode', 'memberIds', 'settings',
+          'currentRoundId', 'goalMinor', 'roundTotalMinor', 'status', 'createdAt']) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 60 &&
+        data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+        data.currency is string && data.currency.matches('^[A-Z]{3}$') &&
+        isValidInviteCode(data.inviteCode) &&
+        data.memberIds is list && data.memberIds.size() >= 1 && data.memberIds.size() <= 50 &&
+        isValidSettings(data.settings) &&
+        data.currentRoundId is string && data.currentRoundId.size() >= 1 && data.currentRoundId.size() <= 64 &&
+        data.goalMinor is int && data.goalMinor >= 0 && data.goalMinor <= 100000000 &&
+        data.roundTotalMinor is int && data.roundTotalMinor >= 0 &&
+        data.status in ['ACTIVE', 'CLOSED'] &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidMember(data) {
+      return data.keys().hasOnly(['role', 'displayName', 'photoUrl', 'owedMinor', 'paidMinor', 'joinCode', 'joinedAt']) &&
+        data.keys().hasAll(['role', 'displayName', 'owedMinor', 'paidMinor', 'joinCode', 'joinedAt']) &&
+        data.role in ['OWNER', 'ADMIN', 'MEMBER'] &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+        (!('photoUrl' in data) ||
+          (data.photoUrl is string &&
+           data.photoUrl.size() <= 2000 &&
+           data.photoUrl.matches('^https://.*'))) &&
+        data.owedMinor is int && data.owedMinor >= 0 &&
+        data.paidMinor is int && data.paidMinor >= 0 &&
+        isValidInviteCode(data.joinCode) &&
+        data.joinedAt is timestamp;
+    }
+
+    match /jars/{jarId} {
+      // Written so the "jars where memberIds contains me" query is allowed.
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.memberIds;
+
+      // A new jar belongs to its creator, starts empty and active, and must arrive in the
+      // same batch as its invite code, first round and the owner's member document.
+      allow create: if isAuthenticated() &&
+        isValidJar(request.resource.data) &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.memberIds == [request.auth.uid] &&
+        request.resource.data.roundTotalMinor == 0 &&
+        request.resource.data.status == 'ACTIVE' &&
+        request.resource.data.createdAt == request.time &&
+        getAfter(/databases/$(database)/documents/inviteCodes/$(request.resource.data.inviteCode)).data.jarId == jarId &&
+        existsAfter(/databases/$(database)/documents/jars/$(jarId)/members/$(request.auth.uid)) &&
+        existsAfter(/databases/$(database)/documents/jars/$(jarId)/rounds/$(request.resource.data.currentRoundId));
+
+      // Joining: a non-member appends exactly their own uid, changes nothing else, and
+      // creates their member document (which must carry the invite code) in the same batch.
+      allow update: if isAuthenticated() &&
+        isValidJar(request.resource.data) &&
+        resource.data.status == 'ACTIVE' &&
+        !(request.auth.uid in resource.data.memberIds) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']) &&
+        request.resource.data.memberIds == resource.data.memberIds.concat([request.auth.uid]) &&
+        existsAfter(/databases/$(database)/documents/jars/$(jarId)/members/$(request.auth.uid));
+
+      allow delete: if false;
+
+      match /members/{memberId} {
+        allow read: if isMember(jarId);
+
+        // You can only add yourself, only alongside being added to memberIds, only with the
+        // jar's invite code, and never with a role above what you are: OWNER for the jar's
+        // owner, MEMBER for everyone else. Nobody can make themselves an admin.
+        allow create: if isOwner(memberId) &&
+          isValidMember(request.resource.data) &&
+          request.auth.uid in getAfter(jarPath(jarId)).data.memberIds &&
+          request.resource.data.role ==
+            (getAfter(jarPath(jarId)).data.ownerId == request.auth.uid ? 'OWNER' : 'MEMBER') &&
+          request.resource.data.joinCode == getAfter(jarPath(jarId)).data.inviteCode &&
+          request.resource.data.owedMinor == 0 &&
+          request.resource.data.paidMinor == 0 &&
+          request.resource.data.joinedAt == request.time;
+
+        allow update, delete: if false;
+      }
+
+      match /rounds/{roundId} {
+        allow read: if isMember(jarId);
+
+        // Only the first round, created by the owner in the batch that creates the jar.
+        allow create: if isAuthenticated() &&
+          !exists(jarPath(jarId)) &&
+          getAfter(jarPath(jarId)).data.ownerId == request.auth.uid &&
+          getAfter(jarPath(jarId)).data.currentRoundId == roundId &&
+          request.resource.data.keys().hasOnly(['goalMinor', 'totalMinor', 'startedAt']) &&
+          request.resource.data.keys().hasAll(['goalMinor', 'totalMinor', 'startedAt']) &&
+          request.resource.data.goalMinor == getAfter(jarPath(jarId)).data.goalMinor &&
+          request.resource.data.totalMinor == 0 &&
+          request.resource.data.startedAt == request.time;
+
+        allow update, delete: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Invite codes
+    // ---------------------------------------------------------------
+
+    match /inviteCodes/{code} {
+      // Fetch by exact code only. Listing is denied so codes cannot be harvested.
+      allow get: if isAuthenticated();
+      allow list: if false;
+
+      // Created with its jar, by the jar's owner, and must be the code that jar records.
+      allow create: if isAuthenticated() &&
+        isValidInviteCode(code) &&
+        request.resource.data.keys().hasOnly(['jarId']) &&
+        request.resource.data.jarId is string &&
+        request.resource.data.jarId.size() >= 1 && request.resource.data.jarId.size() <= 64 &&
+        !exists(/databases/$(database)/documents/jars/$(request.resource.data.jarId)) &&
+        getAfter(/databases/$(database)/documents/jars/$(request.resource.data.jarId)).data.ownerId == request.auth.uid &&
+        getAfter(/databases/$(database)/documents/jars/$(request.resource.data.jarId)).data.inviteCode == code;
+
+      allow update, delete: if false;
     }
   }
 }

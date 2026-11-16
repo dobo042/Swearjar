@@ -3,12 +3,7 @@
     <string name="app_name">Swearjar</string>
     <string name="jar_progress">%1$s of %2$s</string>
     <string name="jar_no_goal">%1$s in the jar</string>
-    <string name="jar_goal_reached">Goal reached!</string>
     <string name="jar_closed">This jar is closed.</string>
-    <string name="jar_round">Round %1$d</string>
-    <string name="demo_banner">Demo jar on this phone only. Shared jars are coming next.</string>
-    <string name="log_offence">Log an offence</string>
-    <string name="topic_button">%1$s %2$s · %3$s</string>
     <string name="jar_content_description">Jar, %1$d percent full</string>
     <string name="sign_in_tagline">A shared jar for the things you said you\'d stop doing.</string>
     <string name="sign_in_with_google">Sign in with Google</string>
@@ -16,4 +11,70 @@
     <string name="sign_in_no_account">No Google account was found on this phone. Add one in Settings and try again.</string>
     <string name="sign_out">Sign out</string>
     <string name="signed_in_as">Signed in as %1$s</string>
+    <string name="back">Back</string>
+    <string name="something_went_wrong">Something went wrong. Check your connection and try again.</string>
+
+    <string name="jars_title">Your jars</string>
+    <string name="jars_empty">You\'re not in any jars yet. Start one, or join one with an invite code.</string>
+    <string name="jars_create">Start a jar</string>
+    <string name="jars_join">Join a jar</string>
+    <string name="jars_members">%1$d members</string>
+    <string name="jars_one_member">Just you so far</string>
+
+    <string name="create_title">Start a jar</string>
+    <string name="create_name">Jar name</string>
+    <string name="create_name_blank">Give the jar a name.</string>
+    <string name="create_name_long">Keep the name under 60 characters.</string>
+    <string name="create_currency">Currency</string>
+    <string name="create_goal">Goal (optional)</string>
+    <string name="create_goal_help">The jar fills as the total heads for this amount. Leave empty for no goal.</string>
+    <string name="create_goal_invalid">Enter an amount like 20 or 20.50.</string>
+    <string name="create_goal_large">That goal is too large.</string>
+    <string name="create_logging">Who can log an offence?</string>
+    <string name="create_pricing">What does an offence cost?</string>
+    <string name="create_goal_behaviour">When the goal is reached</string>
+    <string name="create_submit">Create jar</string>
+
+    <string name="logging_anyone">Anyone, on anyone</string>
+    <string name="logging_anyone_desc">Any member can call out any other member.</string>
+    <string name="logging_dispute">Anyone, with disputes</string>
+    <string name="logging_dispute_desc">As above, but the accused can dispute it and an admin decides.</string>
+    <string name="logging_self">Self-report only</string>
+    <string name="logging_self_desc">Members log their own offences.</string>
+    <string name="logging_admins">Admins only</string>
+    <string name="logging_admins_desc">Only the owner and admins log offences.</string>
+
+    <string name="pricing_fixed">Fixed price</string>
+    <string name="pricing_fixed_desc">Each topic always costs its set price.</string>
+    <string name="pricing_override">Fixed, can be changed</string>
+    <string name="pricing_override_desc">Each topic has a price, but whoever logs it can enter a different amount.</string>
+    <string name="pricing_escalating">Rising for repeats</string>
+    <string name="pricing_escalating_desc">The price doubles for every 3 repeats of a topic within a week.</string>
+
+    <string name="goal_reset">Celebrate and start again</string>
+    <string name="goal_reset_desc">The full jar is archived and a fresh round begins.</string>
+    <string name="goal_keep">Celebrate and keep filling</string>
+    <string name="goal_keep_desc">The jar overflows until a new goal is set.</string>
+    <string name="goal_close">Celebrate and close</string>
+    <string name="goal_close_desc">The jar is locked once the goal is hit.</string>
+
+    <string name="join_title">Join a jar</string>
+    <string name="join_help">Ask someone in the jar for its invite code, or scan the QR code on their phone.</string>
+    <string name="join_code">Invite code</string>
+    <string name="join_submit">Join</string>
+    <string name="join_scan">Scan QR code</string>
+    <string name="join_invalid">That doesn\'t look like an invite code. Codes are 6 letters and numbers.</string>
+    <string name="join_not_found">No jar has that code. Check it and try again.</string>
+    <string name="join_refused">That jar is full or closed, so it can\'t be joined.</string>
+    <string name="join_scan_failed">Couldn\'t scan. Type the code instead.</string>
+
+    <string name="jar_missing">This jar isn\'t available.</string>
+    <string name="jar_invite_title">Invite people</string>
+    <string name="jar_invite_help">Share this code, or let them scan it from the Join screen.</string>
+    <string name="jar_invite_qr">QR code for invite code %1$s</string>
+    <string name="jar_members_title">Members</string>
+    <string name="jar_no_topics">Topics and logging offences are coming next.</string>
+    <string name="role_owner">Owner</string>
+    <string name="role_admin">Admin</string>
+    <string name="role_member">Member</string>
 </resources>
