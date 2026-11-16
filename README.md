@@ -22,11 +22,26 @@ Needs JDK 17+ and the Android SDK (platform 36). Open in Android Studio, or:
 ./gradlew :app:assembleDebug
 ```
 
+## Firebase
+
+The app uses the Firebase project `swear-jar-ec309` (Authentication with Google sign-in,
+and Firestore). `app/google-services.json` is not in the repo; fetch it with:
+
+```bash
+npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project swear-jar-ec309
+```
+
+Security rules are in `firestore.rules`, with tests that run in the local emulator:
+
+```bash
+cd firestore-tests && npm install && npm test
+```
+
 ## Status
 
-Built: project scaffold, rules engine with tests, the animated jar, and a jar screen running
-on an in-memory demo jar.
+Built: project scaffold, rules engine with tests, the animated jar, a jar screen running on
+an in-memory demo jar, Google sign-in, and Firestore rules for user profiles. The app module
+has not yet been compiled; see `HANDOVER.md`.
 
-Next: Google sign-in and creating/joining jars (needs a Firebase project and its
-`app/google-services.json`), then topics, logging and the ledger on Firestore, then
+Next: creating and joining jars, then topics, logging and the ledger on Firestore, then
 disputes, settlements and rounds.

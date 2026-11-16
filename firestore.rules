@@ -1,0 +1,91 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: users
+// Document ID: the Firebase Authentication uid of the user
+// Fields:
+//   - displayName: string (required, 1-80 chars) - name shown to other jar members
+//   - photoUrl:    string (optional, https URL, at most 2000 chars) - avatar
+//   - createdAt:   timestamp (required, server time at creation, immutable)
+//   - updatedAt:   timestamp (required, server time of the write)
+// Holds no email or other private data. Readable and writable by its owner only;
+// other members see a copy of the name and avatar on the jar's member document.
+//
+// Jars, members, topics, rounds, entries and settlements are not yet written by
+// the app, so no rule allows them and they are denied by default.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Verify a uid field, if present, names the caller on create.
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == request.auth.uid;
+    }
+
+    // Ensure a uid field, if present, is not modified on update.
+    function uidNotModified() {
+      return !('uid' in request.resource.data) ||
+        request.resource.data.uid == resource.data.uid;
+    }
+
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators (used by both create and update)
+    // ===============================================================
+
+    function isValidUser(data) {
+      return data.keys().hasOnly(['displayName', 'photoUrl', 'createdAt', 'updatedAt']) &&
+        data.keys().hasAll(['displayName', 'createdAt', 'updatedAt']) &&
+        data.displayName is string &&
+        data.displayName.size() >= 1 && data.displayName.size() <= 80 &&
+        (!('photoUrl' in data) ||
+          (data.photoUrl is string &&
+           data.photoUrl.size() <= 2000 &&
+           data.photoUrl.matches('^https://.*'))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt == request.time;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+
+      allow create: if isOwner(userId) &&
+        uidUnchanged() &&
+        isValidUser(request.resource.data) &&
+        request.resource.data.createdAt == request.time;
+
+      allow update: if isOwner(userId) &&
+        uidNotModified() &&
+        isValidUser(request.resource.data) &&
+        areImmutableFieldsUnchanged(['createdAt']);
+
+      // Profiles are not deleted from the app.
+      allow delete: if false;
+    }
+  }
+}

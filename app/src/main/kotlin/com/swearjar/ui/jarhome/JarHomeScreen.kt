@@ -14,6 +14,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -36,14 +37,23 @@ import com.swearjar.ui.jar.JarCanvas
 import kotlinx.coroutines.delay
 
 @Composable
-fun JarHomeScreen(viewModel: JarHomeViewModel = hiltViewModel()) {
+fun JarHomeScreen(
+    userName: String,
+    onSignOut: () -> Unit,
+    viewModel: JarHomeViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    JarHomeContent(state, onLog = viewModel::logOffence)
+    JarHomeContent(state, userName, onSignOut, onLog = viewModel::logOffence)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun JarHomeContent(state: JarHomeState, onLog: (Topic) -> Unit) {
+private fun JarHomeContent(
+    state: JarHomeState,
+    userName: String,
+    onSignOut: () -> Unit,
+    onLog: (Topic) -> Unit,
+) {
     // Show the celebration for a few seconds each time the goal is hit.
     var celebrating by remember { mutableStateOf(false) }
     LaunchedEffect(state.celebrations) {
@@ -54,7 +64,14 @@ private fun JarHomeContent(state: JarHomeState, onLog: (Topic) -> Unit) {
         }
     }
 
-    Scaffold(topBar = { TopAppBar(title = { Text(state.jarName) }) }) { padding: PaddingValues ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(state.jarName) },
+                actions = { TextButton(onClick = onSignOut) { Text(stringResource(R.string.sign_out)) } },
+            )
+        },
+    ) { padding: PaddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -69,6 +86,11 @@ private fun JarHomeContent(state: JarHomeState, onLog: (Topic) -> Unit) {
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
+            )
+            Text(
+                stringResource(R.string.signed_in_as, userName),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(stringResource(R.string.jar_round, state.round), style = MaterialTheme.typography.labelLarge)
 

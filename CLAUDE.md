@@ -19,14 +19,30 @@ what to do next.
 - A user can be in several jars. Each jar has one currency. Roles are owner, admin, member.
 - The jar fills by amount **logged** in the current round, not amount paid.
 
+## Firebase
+
+- Project ID: `swear-jar-ec309` (set in `.firebaserc`). Android package: `com.swearjar`.
+- Use the Firebase agent skills (plugin `firebase@firebase`, from the `firebase/agent-skills`
+  marketplace) for any Firebase task. If they are not loaded in a session, install them:
+  `claude plugin marketplace add firebase/agent-skills` then
+  `claude plugin install firebase@firebase`.
+- Run the CLI as `npx -y firebase-tools@latest ...`, never a bare `firebase`.
+- `firestore.rules` follows the `firestore-rules-creation` skill: default deny, a validator
+  function used by both create and update, no email or other private data in `users`.
+  Every rules change gets a test in `firestore-tests/` and is described to the user as a
+  prototype to review, not as proven secure.
+
 ## Layout
 
 - `domain/` — pure Kotlin/JVM module. Models (`domain/model`) and the rules engine
   (`domain/rules`). **No Android or Firebase imports here, ever.**
 - `app/` — Android app, package `com.swearjar`.
   - `ui/` Compose screens and ViewModels (MVVM, `StateFlow`), `ui/nav` for routes
-  - `data/` (not yet created) Firestore/Auth repositories exposing `Flow`s
-  - `di/` (not yet created) Hilt modules
+  - `data/` Firestore/Auth repositories exposing `Flow`s
+  - `di/` Hilt modules
+- `firebase.json`, `firestore.rules`, `firestore.indexes.json` — Firebase config, deployed
+  with the CLI.
+- `firestore-tests/` — security rules tests (Node, run in the Firestore emulator).
 - `gradle/libs.versions.toml` — every dependency and plugin version lives here.
 
 ## Conventions
@@ -54,13 +70,17 @@ what to do next.
 ./gradlew :app:assembleDebug
 ```
 
+```bash
+cd firestore-tests && npm install && npm test
+```
+
 The domain tests run without the Android SDK. Anything under `:app` needs the SDK
 (platform 36) via `ANDROID_HOME` or `local.properties`.
 
 ## Toolchain
 
 Gradle 8.14.3 (wrapper), AGP 8.13.2, Kotlin 2.2.21, KSP 2.2.21-2.0.5, Compose BOM 2025.11.01,
-Hilt 2.57.2, compileSdk/targetSdk 36, minSdk 26, JVM target 17. This is a deliberately
+Hilt 2.57.2, Firebase BoM 35.2.0, google-services 4.6.0, Credentials 1.6.0, compileSdk/targetSdk 36, minSdk 26, JVM target 17. This is a deliberately
 conservative, mutually compatible set, not the newest. Upgrade as one deliberate step, with a
 working build before and after.
 
