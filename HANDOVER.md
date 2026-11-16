@@ -4,70 +4,73 @@ Last updated: 2026-11-16. Branch: `claude/bold-noether-1w57l9`. No pull request 
 
 ## State in one paragraph
 
-The system plan is agreed. The rules engine in `domain/` is verified (25 unit tests) and the
-Firestore security rules are verified in the emulator (9 tests). The Android app module in
-`app/` **has never been compiled**: the machine it was written on had no Android SDK. It now
-contains Google sign-in and Firebase wiring as well as the jar screen. Treat everything
-under `app/` as unbuilt until `./gradlew :app:assembleDebug` succeeds, and expect compile
-fixes. Nothing has been changed in the Firebase project `swear-jar-ec309` yet, because the
-Firebase CLI was not signed in.
+The system plan is agreed and the foundations are in. The app **builds** into a debug APK.
+The rules engine is verified (25 unit tests), the Firestore security rules are verified in
+the emulator (9 tests) and deployed, and the jar drawing has been rendered and looked at.
+The Firebase project `swear-jar-ec309` has an Android app registered, Google sign-in enabled
+and a Firestore database in London. What has **never been run** is the app itself on a
+device: sign-in, the profile write and the jar screen are untested end to end.
 
 ## Blocked on the user
 
-1. **Firebase CLI sign-in.** `npx -y firebase-tools@latest login --no-localhost` needs the
-   user to open a link and return a code. Until then no project-side step can run.
-2. **Android SDK licence.** Installing the SDK in a cloud session means accepting Google's
-   SDK licence, which is the user's decision. The alternative is the user building in
-   Android Studio and reporting errors.
-3. **Debug SHA-1.** Google sign-in on Android only works for builds signed with a key
-   registered on the Firebase Android app. It comes from whichever machine builds the APK.
-4. **Support email** for the Google sign-in consent screen, and the Firestore **location**
-   (and edition) if no database exists yet.
+1. **Debug SHA-1.** Google sign-in on Android only works for builds signed with a key
+   registered on the Firebase Android app. None is registered yet. It must come from
+   whichever machine builds the APK the user installs (`./gradlew signingReport`), then:
 
-## Firebase project steps still to run (in order, once signed in)
+   ```bash
+   npx -y firebase-tools@latest apps:android:sha:create 1:496502258154:android:379e72c625afcf2eb61a93 <SHA1> --project swear-jar-ec309
+   ```
+
+   Re-fetch `app/google-services.json` afterwards (command below).
+2. **How the user will run the app** (Android Studio on their machine, or an APK built in a
+   cloud session) is not yet known. A cloud-built APK is signed with that container's
+   throwaway debug key, so it would need a fixed signing key to be useful.
+
+## Firebase project state
+
+| Item | State |
+|---|---|
+| Android app `com.swearjar` | Registered. App ID `1:496502258154:android:379e72c625afcf2eb61a93` |
+| Google sign-in provider | Enabled via `firebase.json` `auth` block and `deploy --only auth` |
+| Firestore | `(default)` database, Standard edition, `europe-west2`. Rules and indexes deployed |
+| `app/google-services.json` | Fetched and committed (user's choice). Contains the web client ID |
+| SHA-1 fingerprints | None registered |
+
+Re-fetch the config after any project change that affects it:
 
 ```bash
-npx -y firebase-tools@latest apps:create ANDROID Swearjar --package-name com.swearjar --project swear-jar-ec309
+npx -y firebase-tools@latest apps:sdkconfig ANDROID 1:496502258154:android:379e72c625afcf2eb61a93 --project swear-jar-ec309 --out app/google-services.json
 ```
 
-Then add the SHA-1 (`apps:android:sha:create <APP_ID> <SHA1>`), add the `auth` block with
-`googleSignIn` to `firebase.json` and `deploy --only auth`, check
-`firestore:databases:list` and `deploy --only firestore`, and **last** fetch the config:
-
-```bash
-npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project swear-jar-ec309
-```
-
-saved as `app/google-services.json`. It must be fetched after Google sign-in is enabled, or
-it will lack the web client ID that `R.string.default_web_client_id` is generated from, and
-the app will not compile. The file is gitignored; whether to commit it is undecided.
+The Firebase CLI login lives only in the cloud container it was done in. A new session must
+sign in again: run `npx -y firebase-tools@latest login`, give the user the link it prints,
+and complete with `npx -y firebase-tools@latest login <code>`.
 
 ## Done
 
 | Piece | Where | Verified |
 |---|---|---|
-| Gradle scaffold, version catalog, wrapper | root, `gradle/` | Configures; plugins resolve |
+| Gradle scaffold, version catalog, wrapper | root, `gradle/` | Builds |
 | Models and rules engine | `domain/` | 25 tests pass |
-| Firestore rules for `users/{uid}`, everything else denied | `firestore.rules` | 9 emulator tests pass |
-| Firebase config files | `firebase.json`, `.firebaserc`, `firestore.indexes.json` | Not deployed |
-| App shell: theme, Hilt, activity, nav host, icon | `app/src/main` | Not compiled |
-| Firebase SDK wiring, Hilt module | `app/build.gradle.kts`, `app/.../di` | Not compiled |
-| Google sign-in, sign-out, profile write | `app/.../data/auth`, `ui/signin`, `ui/session` | Not compiled, never run |
-| Jar drawing with fill, coin drop, confetti, overflow | `app/.../ui/jar/JarCanvas.kt` | Not compiled, never seen |
-| Jar screen on an in-memory demo jar | `app/.../ui/jarhome` | Not compiled |
+| Firestore rules for `users/{uid}`, everything else denied | `firestore.rules` | 9 emulator tests pass; deployed |
+| App shell: theme, Hilt, activity, nav host, icon | `app/src/main` | Compiles |
+| Firebase SDK wiring, Hilt module | `app/build.gradle.kts`, `app/.../di` | Compiles |
+| Google sign-in, sign-out, profile write | `app/.../data/auth`, `ui/signin`, `ui/session` | Compiles; never run |
+| Jar drawing: fill, overflow | `app/.../ui/jar/JarCanvas.kt` | Rendered and checked (`docs/jar-states.png`) |
+| Jar animations: coin drop, confetti | same | Compiles; never seen |
+| Jar screen on an in-memory demo jar | `app/.../ui/jarhome` | Compiles; never run |
 
 ## Next steps, in order
 
-1. Run the Firebase project steps above.
-2. Get `:app:assembleDebug` green; fix what the first compile turns up. Sign in on a device.
-   Look at `JarCanvas` at 0%, 50%, 100% and overflow and tune it.
-3. **Jars**: "my jars", the create-jar wizard (name, currency, goal, the three settings),
+1. Register a SHA-1, install the app on a device, sign in, confirm `users/{uid}` appears in
+   Firestore. Fix what that turns up.
+2. **Jars**: "my jars", the create-jar wizard (name, currency, goal, the three settings),
    join by code or QR (`play-services-code-scanner`, ZXing core). Rules and rules tests for
    `jars`, `members`, `inviteCodes`.
-4. **Topics, logging, ledger**: repositories in `app/.../data`, the log-entry transaction,
+3. **Topics, logging, ledger**: repositories in `app/.../data`, the log-entry transaction,
    rules and tests, the ledger screen. Replace the demo state in `JarHomeViewModel`.
-5. **Disputes, settlements, rounds.**
-6. Later: push notifications (Cloud Functions, Blaze plan), stats, reminders.
+4. **Disputes, settlements, rounds.**
+5. Later: push notifications (Cloud Functions, Blaze plan), stats, reminders.
 
 ## Firestore data model
 
@@ -95,15 +98,17 @@ member can never set or raise their own role.
 
 ## Things worth knowing
 
-- **Firebase plugin lives in the session, not the repo.** It was installed into one cloud
-  container with the two `claude plugin` commands in `CLAUDE.md`; a new session must
-  reinstall it. Its skills are plain files under
-  `~/.claude/plugins/marketplaces/firebase/skills` and can be read directly.
-- **Firestore edition.** The Firebase skill defaults a new database to Enterprise edition;
-  the app code so far uses only core APIs that work on either. Check
-  `firestore:databases:list` and ask the user before creating one.
+- **Plugins live in the session, not the repo.** The Firebase and Android CLI plugins were
+  installed into one cloud container (commands in `CLAUDE.md`); a new session must reinstall
+  them. Their skills are plain files under `~/.claude/plugins/marketplaces/` and can be read
+  directly even when the session has not loaded them as tools.
+- **Cloud session setup takes a few minutes**: Android command-line tools, then
+  `platforms/android-36`, `build-tools/36.0.0`, `platform-tools`. The user has accepted the
+  SDK licence. Maven Central sometimes answers 429; wait and retry.
+- **The user's support email is in `firebase.json`**, at their request, for the Google
+  sign-in consent screen.
 - **Demo jar is temporary.** `JarHomeViewModel` holds an in-memory jar and the screen shows
-  a banner saying so. Remove both in step 4.
+  a banner saying so. Remove both in step 3.
 - **Escalation needs a count.** `PricingRules.priceFor` takes `priorOffences`: the
   offender's live entries on that topic inside `Escalation.windowDays`. The demo counts per
   round; the real version needs a query before the transaction.
@@ -114,5 +119,3 @@ member can never set or raise their own role.
   admin cannot resolve a dispute on an entry they logged; whoever logged an entry can
   retract it, except a self-report; a single entry is capped at 1,000,000 minor units;
   default escalation doubles every 3 offences in 7 days, at most 3 times.
-- **Toolchain is pinned to late 2025** (see `CLAUDE.md`); Firebase and sign-in libraries are
-  the latest and were checked to be compatible with it from their published metadata.

@@ -75,15 +75,26 @@ cd firestore-tests && npm install && npm test
 ```
 
 The domain tests run without the Android SDK. Anything under `:app` needs the SDK
-(platform 36) via `ANDROID_HOME` or `local.properties`.
+(platform 36) via `ANDROID_HOME` or `local.properties`. The user has accepted the Android SDK
+licence, so in a cloud session it may be installed with the command-line tools.
+
+There is no emulator in cloud sessions (no KVM). To look at UI, render Compose previews with
+the Android CLI (plugin `android-cli@android-cli-plugin`, marketplace
+`android/android-cli-plugin`):
+
+```bash
+android preview render -o <dir> --fqn com.swearjar.ui.jar.JarCanvasKt.JarHalfPreview '?:app'
+```
 
 ## Toolchain
 
-Gradle 8.14.3 (wrapper), AGP 8.13.2, Kotlin 2.2.21, KSP 2.2.21-2.0.5, Compose BOM 2025.11.01,
-Hilt 2.57.2, Firebase BoM 35.2.0, google-services 4.6.0, Credentials 1.6.0, compileSdk/targetSdk 36, minSdk 26, JVM target 17. This is a deliberately
-conservative, mutually compatible set, not the newest. Upgrade as one deliberate step, with a
+Gradle 8.14.3 (wrapper), AGP 8.13.2, Kotlin 2.3.21, KSP 2.3.14, Compose BOM 2025.11.01,
+Hilt 2.58, Firebase BoM 35.2.0, google-services 4.6.0, Credentials 1.6.0, compileSdk/targetSdk 36, minSdk 26, JVM target 17. Kotlin must stay at 2.3 or later: the Firebase and Google ID
+libraries ship Kotlin 2.4 metadata, which older compilers cannot read. This set builds; it is
+not the newest. Upgrade as one deliberate step, with a
 working build before and after.
 
 ## Do not commit
 
-`app/google-services.json`, `local.properties`, keystores. All are in `.gitignore`.
+`local.properties`, keystores. Both are in `.gitignore`. `app/google-services.json` **is**
+committed, at the user's request; it holds project identifiers, not secrets.

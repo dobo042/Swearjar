@@ -25,11 +25,10 @@ Needs JDK 17+ and the Android SDK (platform 36). Open in Android Studio, or:
 ## Firebase
 
 The app uses the Firebase project `swear-jar-ec309` (Authentication with Google sign-in,
-and Firestore). `app/google-services.json` is not in the repo; fetch it with:
+and Firestore, in `europe-west2`). Its config is committed at `app/google-services.json`.
 
-```bash
-npx -y firebase-tools@latest apps:sdkconfig ANDROID <APP_ID> --project swear-jar-ec309
-```
+Google sign-in only works for builds signed with a key whose SHA-1 is registered on the
+Firebase Android app. Print yours with `./gradlew signingReport`.
 
 Security rules are in `firestore.rules`, with tests that run in the local emulator:
 
@@ -40,8 +39,10 @@ cd firestore-tests && npm install && npm test
 ## Status
 
 Built: project scaffold, rules engine with tests, the animated jar, a jar screen running on
-an in-memory demo jar, Google sign-in, and Firestore rules for user profiles. The app module
-has not yet been compiled; see `HANDOVER.md`.
+an in-memory demo jar, Google sign-in, and Firestore rules for user profiles. The app builds;
+sign-in has not yet been tried on a device. See `HANDOVER.md`.
+
+![The jar empty, half full, full and overflowing](docs/jar-states.png)
 
 Next: creating and joining jars, then topics, logging and the ledger on Firestore, then
 disputes, settlements and rounds.

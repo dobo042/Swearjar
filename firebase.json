@@ -1,6 +1,19 @@
 {
+  "auth": {
+    "providers": {
+      "googleSignIn": {
+        "oAuthBrandDisplayName": "Swearjar",
+        "supportEmail": "paul.dobson042@gmail.com",
+        "authorizedRedirectUris": [
+          "https://swear-jar-ec309.firebaseapp.com/__/auth/handler"
+        ]
+      }
+    }
+  },
   "firestore": {
     "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "indexes": "firestore.indexes.json",
+    "database": "(default)",
+    "location": "europe-west2"
   }
 }

@@ -110,7 +110,7 @@ fun JarCanvas(
             for (coin in coins) {
                 val cy = coin.y * h
                 // Each coin sits a little above or below the line so the surface looks heaped.
-                if (cy + coin.jitter * coinRadius >= level) {
+                if (fill > 0f && cy + coin.jitter * coinRadius >= level) {
                     drawCoin(Offset(coin.x * w, cy), coinRadius, coin.silver)
                 }
             }

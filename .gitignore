@@ -9,5 +9,3 @@ captures/
 *.aab
 *.jks
 *.keystore
-# Firebase config is per-developer; see README
-app/google-services.json
