@@ -97,7 +97,6 @@ private fun JarHomeContent(
             JarCanvas(
                 fillFraction = state.fillFraction,
                 modifier = Modifier.fillMaxWidth(0.6f),
-                dropKey = state.entryCount,
                 celebrate = celebrating,
             )
 

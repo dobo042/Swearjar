@@ -1,7 +1,6 @@
 package com.swearjar.ui.jar
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -22,12 +21,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,15 +45,16 @@ import kotlin.random.Random
 /**
  * The jar. Drawn entirely from state, so it can be previewed and tested without a backend.
  *
+ * The contents are a flat fill that rises to a dashed goal line. Past the goal the fill
+ * carries on up the neck to the rim and deepens in colour.
+ *
  * @param fillFraction 0 is empty, 1 is at the goal, above 1 overflows (see `GoalRules.fillFraction`)
- * @param dropKey change this to drop a coin in; typically the number of entries in the round
  * @param celebrate true while the goal-reached celebration should play
  */
 @Composable
 fun JarCanvas(
     fillFraction: Float,
     modifier: Modifier = Modifier,
-    dropKey: Int = 0,
     celebrate: Boolean = false,
 ) {
     val fill by animateFloatAsState(
@@ -61,22 +63,12 @@ fun JarCanvas(
         label = "jarFill",
     )
 
-    val drop = remember { Animatable(1f) }
-    LaunchedEffect(dropKey) {
-        if (dropKey != 0) {
-            drop.snapTo(0f)
-            drop.animateTo(1f, tween(durationMillis = 550, easing = FastOutLinearInEasing))
-        }
-    }
-
     val confetti = remember { Animatable(0f) }
     LaunchedEffect(celebrate) {
         confetti.snapTo(0f)
         if (celebrate) confetti.animateTo(1f, tween(durationMillis = 2400, easing = LinearEasing))
     }
 
-    val coins = remember { coinLayout() }
-    val spill = remember { spillLayout() }
     val particles = remember { confettiLayout() }
     val glass = MaterialTheme.colorScheme.outline
     val description = stringResource(
@@ -93,45 +85,45 @@ fun JarCanvas(
         val h = size.height
         val jar = jarPath(w, h)
         val bottom = BOTTOM * h
-        val fullLine = FULL_LINE * h
-        val level = bottom - fill.coerceAtMost(1f) * (bottom - fullLine)
-        val coinRadius = COIN_RADIUS * w
+        val goalLine = GOAL_LINE * h
+        val rim = NECK_TOP * h
+        // 0..1 runs from the bottom to the goal line; 1..MAX_FILL from there up to the rim.
+        val over = ((fill - 1f) / (MAX_FILL - 1f)).coerceIn(0f, 1f)
+        val level = if (fill <= 1f) bottom - fill * (bottom - goalLine) else goalLine - over * (goalLine - rim)
+        val line = 0.022f * w
+        val contents = lerp(Gold, GoldOver, over)
 
         // Glass body.
         drawPath(jar, glass.copy(alpha = 0.08f))
 
         clipPath(jar) {
-            // A wash behind the coins so the gaps between them are not bare glass.
-            drawRect(
-                color = Gold.copy(alpha = 0.35f),
-                topLeft = Offset(0f, level),
-                size = Size(w, (bottom - level).coerceAtLeast(0f)),
-            )
-            for (coin in coins) {
-                val cy = coin.y * h
-                // Each coin sits a little above or below the line so the surface looks heaped.
-                if (fill > 0f && cy + coin.jitter * coinRadius >= level) {
-                    drawCoin(Offset(coin.x * w, cy), coinRadius, coin.silver)
-                }
+            if (fill > 0f) {
+                drawRect(
+                    color = contents,
+                    topLeft = Offset(0f, level),
+                    size = Size(w, bottom - level),
+                )
+                // The surface.
+                drawLine(
+                    color = lerp(GoldDark, GoldOverDark, over),
+                    start = Offset(0f, level),
+                    end = Offset(w, level),
+                    strokeWidth = line * 0.8f,
+                )
             }
-            // The coin on its way in.
-            if (drop.value < 1f) {
-                val from = -coinRadius
-                val to = (level - coinRadius).coerceAtLeast(NECK_TOP * h)
-                drawCoin(Offset(w / 2f, from + (to - from) * drop.value), coinRadius, silver = false)
-            }
-        }
-
-        // Past the goal: coins heap up out of the mouth.
-        if (fill > 1f) {
-            val shown = (((fill - 1f) / (MAX_FILL - 1f)) * spill.size).roundToInt()
-            for (coin in spill.take(shown)) {
-                drawCoin(Offset(coin.x * w, coin.y * h), coinRadius, coin.silver)
+            // Where the goal is, until the contents reach it.
+            if (fill < 1f) {
+                drawLine(
+                    color = glass.copy(alpha = 0.7f),
+                    start = Offset(0f, goalLine),
+                    end = Offset(w, goalLine),
+                    strokeWidth = line * 0.5f,
+                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(line * 2.5f, line * 2f)),
+                )
             }
         }
 
         // Glass outline, rim and a highlight, on top of the contents.
-        val line = 0.022f * w
         drawPath(jar, glass, style = Stroke(width = line, join = StrokeJoin.Round))
         drawRoundRect(
             color = glass,
@@ -160,18 +152,15 @@ private const val MAX_FILL = 1.5f
 private const val NECK_TOP = 0.14f
 private const val SHOULDER = 0.25f
 private const val BOTTOM = 0.97f
-private const val FULL_LINE = 0.19f
+private const val GOAL_LINE = 0.30f
 private const val NECK_LEFT = 0.27f
 private const val RIM_LEFT = 0.23f
 private const val BODY_LEFT = 0.07f
-private const val COIN_RADIUS = 0.058f
 
 private val Gold = Color(0xFFF2B705)
 private val GoldDark = Color(0xFFB87F00)
-private val GoldLight = Color(0xFFFFE08A)
-private val Silver = Color(0xFFC9CED6)
-private val SilverDark = Color(0xFF8C939E)
-private val SilverLight = Color(0xFFF1F3F6)
+private val GoldOver = Color(0xFFE8590C)
+private val GoldOverDark = Color(0xFFA63D00)
 private val ConfettiColors = listOf(
     Color(0xFFE5484D), Color(0xFF3E9BFF), Color(0xFF46A758), Color(0xFFF2B705), Color(0xFF8E4EC6),
 )
@@ -196,59 +185,6 @@ private fun jarPath(w: Float, h: Float): Path = Path().apply {
     cubicTo(bodyR, shoulder, neckR, shoulder, neckR, shoulder - 0.04f * h)
     lineTo(neckR, neckTop)
     close()
-}
-
-private class Coin(val x: Float, val y: Float, val jitter: Float, val silver: Boolean)
-
-/** Staggered rows of coins covering the whole jar interior; the fill level decides which show. */
-private fun coinLayout(): List<Coin> {
-    val random = Random(7)
-    val coins = mutableListOf<Coin>()
-    val stepX = COIN_RADIUS * 1.75f
-    val stepY = COIN_RADIUS * 1.5f * JAR_ASPECT
-    var y = BOTTOM - COIN_RADIUS * JAR_ASPECT * 0.8f
-    var row = 0
-    while (y > NECK_TOP) {
-        var x = BODY_LEFT + (if (row % 2 == 0) 0f else stepX / 2f)
-        while (x < 1f - BODY_LEFT + stepX) {
-            coins += Coin(
-                x = x + (random.nextFloat() - 0.5f) * stepX * 0.3f,
-                y = y + (random.nextFloat() - 0.5f) * stepY * 0.3f,
-                jitter = random.nextFloat() * 2f - 1f,
-                silver = random.nextInt(6) == 0,
-            )
-            x += stepX
-        }
-        y -= stepY
-        row++
-    }
-    // Draw from the top down so lower coins overlap the ones behind and above them.
-    return coins.sortedBy { it.y }
-}
-
-/** A mound above the mouth, built from the middle outwards, for an overflowing jar. */
-private fun spillLayout(): List<Coin> {
-    val random = Random(11)
-    val rows = listOf(5, 4, 3, 2)
-    val coins = mutableListOf<Coin>()
-    rows.forEachIndexed { rowIndex, count ->
-        val y = NECK_TOP - 0.02f - rowIndex * COIN_RADIUS * 1.3f * JAR_ASPECT
-        val order = (0 until count).sortedBy { kotlin.math.abs(it - (count - 1) / 2f) }
-        for (i in order) {
-            val x = 0.5f + (i - (count - 1) / 2f) * COIN_RADIUS * 1.7f
-            coins += Coin(x, y, 0f, silver = random.nextInt(6) == 0)
-        }
-    }
-    return coins
-}
-
-private fun DrawScope.drawCoin(center: Offset, radius: Float, silver: Boolean) {
-    val face = if (silver) Silver else Gold
-    val edge = if (silver) SilverDark else GoldDark
-    val shine = if (silver) SilverLight else GoldLight
-    drawCircle(face, radius, center)
-    drawCircle(edge, radius, center, style = Stroke(width = radius * 0.16f))
-    drawCircle(shine, radius * 0.58f, center, style = Stroke(width = radius * 0.12f))
 }
 
 private class Particle(val angle: Float, val speed: Float, val spin: Float, val color: Color, val size: Float)

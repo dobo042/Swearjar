@@ -56,8 +56,8 @@ and complete with `npx -y firebase-tools@latest login <code>`.
 | App shell: theme, Hilt, activity, nav host, icon | `app/src/main` | Compiles |
 | Firebase SDK wiring, Hilt module | `app/build.gradle.kts`, `app/.../di` | Compiles |
 | Google sign-in, sign-out, profile write | `app/.../data/auth`, `ui/signin`, `ui/session` | Compiles; never run |
-| Jar drawing: fill, overflow | `app/.../ui/jar/JarCanvas.kt` | Rendered and checked (`docs/jar-states.png`) |
-| Jar animations: coin drop, confetti | same | Compiles; never seen |
+| Jar drawing: flat fill to a dashed goal line, overflow up the neck | `app/.../ui/jar/JarCanvas.kt` | Rendered and checked (`docs/jar-states.png`) |
+| Jar animations: rising fill, confetti | same | Compiles; never seen |
 | Jar screen on an in-memory demo jar | `app/.../ui/jarhome` | Compiles; never run |
 
 ## Next steps, in order
@@ -107,6 +107,8 @@ member can never set or raise their own role.
   SDK licence. Maven Central sometimes answers 429; wait and retry.
 - **The user's support email is in `firebase.json`**, at their request, for the Google
   sign-in consent screen.
+- **The jar is a flat fill, not coins**, at the user's request ("simply a line"). Do not
+  reintroduce coins.
 - **Demo jar is temporary.** `JarHomeViewModel` holds an in-memory jar and the screen shows
   a banner saying so. Remove both in step 3.
 - **Escalation needs a count.** `PricingRules.priceFor` takes `priorOffences`: the

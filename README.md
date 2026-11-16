@@ -38,7 +38,7 @@ cd firestore-tests && npm install && npm test
 
 ## Status
 
-Built: project scaffold, rules engine with tests, the animated jar, a jar screen running on
+Built: project scaffold, rules engine with tests, the jar that fills towards its goal, a jar screen running on
 an in-memory demo jar, Google sign-in, and Firestore rules for user profiles. The app builds;
 sign-in has not yet been tried on a device. See `HANDOVER.md`.
 
