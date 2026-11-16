@@ -1,0 +1,69 @@
+# Swearjar
+
+Android app for a shared swear jar. A group agrees on topics, breaking one costs money, and a
+drawn jar fills as the round total approaches a goal. See `HANDOVER.md` for current state and
+what to do next.
+
+## Decisions already made (do not reopen without the user asking)
+
+- **Ledger only.** The app records who owes what. It never moves or holds money; people
+  settle outside the app and a settlement is recorded.
+- **Firebase**: Auth (Google sign-in only) and Firestore. No Cloud Functions in v1, so no
+  push notifications in v1.
+- **Native Kotlin + Jetpack Compose**, Android only.
+- **Joining** is by a 6-character invite code, also shown as a QR code.
+- **Three per-jar settings**, chosen by the owner at setup:
+  - who may log an offence (`LoggingPolicy`)
+  - how an offence is priced (`PricingMode`, with `Escalation`)
+  - what happens at the goal (`GoalBehaviour`)
+- A user can be in several jars. Each jar has one currency. Roles are owner, admin, member.
+- The jar fills by amount **logged** in the current round, not amount paid.
+
+## Layout
+
+- `domain/` — pure Kotlin/JVM module. Models (`domain/model`) and the rules engine
+  (`domain/rules`). **No Android or Firebase imports here, ever.**
+- `app/` — Android app, package `com.swearjar`.
+  - `ui/` Compose screens and ViewModels (MVVM, `StateFlow`), `ui/nav` for routes
+  - `data/` (not yet created) Firestore/Auth repositories exposing `Flow`s
+  - `di/` (not yet created) Hilt modules
+- `gradle/libs.versions.toml` — every dependency and plugin version lives here.
+
+## Conventions
+
+- Money is `Minor` (a `Long` of pence/cents). Never use floating point for money. Format and
+  parse through `Money` in `domain/rules`.
+- The three settings are interpreted **only** in `domain/rules` (`LoggingRules`,
+  `PricingRules`, `GoalRules`). UI and data code call these; they do not re-implement the
+  logic. `firestore.rules`, once written, must mirror `LoggingRules`.
+- Entries are never deleted, only voided.
+- Any change to a counter (member owed, round total, jar total) happens in the same
+  Firestore transaction as the entry that causes it.
+- New rule logic gets unit tests in `domain/src/test`.
+- User-visible text goes in `app/src/main/res/values/strings.xml`, British English.
+- `JarCanvas` is driven purely by its parameters; keep it free of ViewModel or Firebase
+  knowledge.
+
+## Commands
+
+```bash
+./gradlew :domain:test
+```
+
+```bash
+./gradlew :app:assembleDebug
+```
+
+The domain tests run without the Android SDK. Anything under `:app` needs the SDK
+(platform 36) via `ANDROID_HOME` or `local.properties`.
+
+## Toolchain
+
+Gradle 8.14.3 (wrapper), AGP 8.13.2, Kotlin 2.2.21, KSP 2.2.21-2.0.5, Compose BOM 2025.11.01,
+Hilt 2.57.2, compileSdk/targetSdk 36, minSdk 26, JVM target 17. This is a deliberately
+conservative, mutually compatible set, not the newest. Upgrade as one deliberate step, with a
+working build before and after.
+
+## Do not commit
+
+`app/google-services.json`, `local.properties`, keystores. All are in `.gitignore`.
